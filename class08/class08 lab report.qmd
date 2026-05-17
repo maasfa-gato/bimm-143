@@ -1,0 +1,264 @@
+---
+title: "class08"
+author: "Maasfa Shaikh"
+format: pdf
+editor: visual
+---
+
+```{r}
+# Save your input data file into your Project directory
+fna.data <- "WisconsinCancer (1).csv"
+
+# Complete the following code to input the data and store as wisc.df
+wisc.df <- read.csv(fna.data, row.names=1)
+
+#adding the csv file to the quarto document
+
+head(wisc.df, 4)
+#examining input data
+
+wisc.data <- wisc.df[,-1]
+#removing first column
+
+diagnosis <- wisc.df$diagnosis
+#setting up vector for diagnosis for later
+
+```
+
+Q1: How many observations are in this dataset?
+
+```{r}
+dim(wisc.data)
+
+#this tells us the number of rows and columns. 
+nrow(wisc.data)
+#the nummber of rows is the number of observations
+```
+
+Q2: How many of the observations have a malignant diagnosis?
+
+```{r}
+
+#table function shows us the two values the diagnosis column is seperated into, "M": malignant and "B": benign
+table(diagnosis)
+#there are 212 malignant diagnosis
+
+```
+
+Q3. How many variables/features in the data are suffixed with \_mean?
+
+```{r}
+
+#using grep to search through column names that have _mean
+
+length(grep("mean", colnames(wisc.data)))
+
+#there are 10 variables in the data suffixed with _mean. 
+```
+
+checking mean and standard deviation
+
+```{r}
+colMeans(wisc.data)
+
+apply(wisc.data,2,sd)
+
+#scaling is required because the variables have very different means and standard deviations. 
+```
+
+```{r}
+#doing scaling and performing pca
+
+wisc.pr <- prcomp(wisc.data, scale. = TRUE)
+summary(wisc.pr)
+```
+
+Q4:From your results, what proportion of the original variance is captured by the first principal component (PC1)?
+
+A4: Proportion of orginal variance in PC1: 0.4427= 44.27%
+
+Q5. How many principal components (PCs) are required to describe at least 70% of the original variance in the data?
+
+A5: 3 principle componenets are required to describe at least 70% of the orignal variance in the data (cummulative proportion = 0.72636 for PC3)
+
+Q6. How many principal components (PCs) are required to describe at least 90% of the original variance in the data?
+
+A6: 7 principle compopents are needed to describe at least 90% of the original variance in the data (PC7= 0.91 cummulative proportion)
+
+```{r}
+#creating biplot of wisc.pr using biplot function
+
+biplot(wisc.pr)
+```
+
+Q7. What stands out to you about this plot? Is it easy or difficult to understand? Why?
+
+A7: This plot is very difficult to understand, it is too small and very crowded. The numbers and words overlap to the point where you cant even really see anything.
+
+```{r}
+#making plot for PC 1 and PPC2
+library(ggplot2)
+
+ggplot(wisc.pr$x) +
+  aes(PC1, PC2, col=diagnosis) +
+  geom_point()
+
+
+```
+
+Q8. Generate a similar plot for principal components 1 and 3. What do you notice about these plots?
+
+```{r}
+ggplot(wisc.pr$x) +
+  aes(PC1, PC3, col=diagnosis) +
+  geom_point()
+
+#I noticed that principle componenet 1 is capturing a seperationg of malignant form benign samples. PC 2 and 3 show much more overlap
+```
+
+variance stuff
+
+```{r}
+#calcuting variance of each component
+pr.var <- wisc.pr$sdev^2
+head(pr.var)
+```
+
+```{r}
+# Variance explained by each principal component: pve
+pve <- pr.var/sum(pr.var)
+
+# Plot variance explained for each principal component
+plot(c(1,pve), xlab = "Principal Component", 
+     ylab = "Proportion of Variance Explained", 
+     ylim = c(0, 1), type = "o")
+```
+
+```{r}
+# Alternative scree plot of the same data, note data driven y-axis
+barplot(pve, ylab = "Percent of Variance Explained",
+     names.arg=paste0("PC",1:length(pve)), las=2, axes = FALSE)
+axis(2, at=pve, labels=round(pve,2)*100 )
+```
+
+Q9: For the first principal component, what is the component of the loading vector (i.e. wisc.pr\$rotation\[,1\]) for the feature concave.points_mean? This tells us how much this original feature contributes to the first PC. Are there any features with larger contributions than this one?
+
+```{r}
+wisc.pr$rotation["concave.points_mean", 1]
+
+#the loadin =g for concave.points_mean on PC1 is -0.2608538, indicating a moderate contribution to teh first PC. 
+
+wisc.pr$rotation["radius_worst", 1]
+wisc.pr$rotation["perimeter_worst", 1]
+wisc.pr$rotation["area_worst", 1]
+wisc.pr$rotation["radius_mean", 1]
+wisc.pr$rotation["perimeter_mean", 1]
+wisc.pr$rotation["area_mean", 1]
+
+#concave.point_mean seems to have the highest contribution compared to these other features
+```
+
+```{r}
+# Scale the wisc.data data using the "scale()" function
+data.scaled <- scale(wisc.data)
+data.dist <- dist(data.scaled)
+wisc.hclust <- hclust(data.dist, method="complete")
+plot(wisc.hclust)
+
+```
+
+Q10: Using the plot() and abline() functions, what is the height at which the clustering model has 4 clusters? plot
+
+```{r}
+plot(wisc.hclust)
+abline(h = 19, col="red", lty=2)
+
+#A9: there are 4 clusters are height 19
+```
+
+Q12. Which method gives your favorite results for the same data.dist dataset? Explain your reasoning.
+
+```{r}
+#trying different methods:
+#trying single
+data.scaled <- scale(wisc.data)
+data.dist <- dist(data.scaled)
+wisc.hclust.single <- hclust(data.dist, method="single")
+plot(wisc.hclust.single)
+abline(h = 19, col="red", lty=2)
+plot(wisc.hclust.single)
+
+#trying average: 
+data.scaled <- scale(wisc.data)
+data.dist <- dist(data.scaled)
+wisc.hclust.ave <- hclust(data.dist, method="average")
+plot(wisc.hclust.ave)
+abline(h = 19, col="red", lty=2)
+plot(wisc.hclust.ave)
+
+#trying ward.D2
+
+data.scaled <- scale(wisc.data)
+data.dist <- dist(data.scaled)
+wisc.hclust.D2 <- hclust(data.dist, method="ward.D2")
+plot(wisc.hclust.D2)
+abline(h = 19, col="red", lty=2)
+plot(wisc.hclust.D2)
+
+#answer12: I think my favorite results are with ward.D2 because it minimizes variance with clusters, produces the cleanest looking plots and seperations and looks visually better overall. 
+
+```
+
+***clustering on PCA results*** just following steps from worksheet
+
+```{r}
+#creating plot with PC7 (90% variability)
+pc90 <- wisc.pr$x[, 1:7]
+pc.dist <- dist(pc90)
+wisc.pr.hclust <- hclust(pc.dist, method = "ward.D2")
+plot(wisc.pr.hclust)
+
+#figuring out what the two clusters are
+grps <- cutree(wisc.pr.hclust, k=2)
+table(grps)
+table(grps, diagnosis)
+ggplot(wisc.pr$x) +
+  aes(PC1, PC2) +
+  geom_point(col=grps)
+
+```
+
+```{r}
+wisc.pr.hclust.clusters <- cutree(wisc.pr.hclust, k=2)
+wisc.hclust.clusters <- cutree(wisc.hclust, k=4)
+```
+
+Q14. How well do the hierarchical clustering models you created in the previous sections (i.e. without first doing PCA) do in terms of separating the diagnoses? Again, use the table() function to compare the output of each model (wisc.hclust.clusters and wisc.pr.hclust.clusters) with the vector containing the actual diagnoses.
+
+```{r}
+#model without PCA
+table(wisc.hclust.clusters, diagnosis)
+
+#model with PCA:
+table(wisc.pr.hclust.clusters, diagnosis)
+
+#A14: This model without PCA performs worse compared to the model with PCA-based clustering. PCA improves clustering quality significantly, there are clean 2 groups, and strong alignment, compared to without PCA, which shows overlapping clusters. The clusters are both equally divided between B and M whereas without PCA, the clusters are mostly either B or M
+```
+
+```{r}
+#url <- "new_samples.csv"
+url <- "https://tinyurl.com/new-samples-CSV"
+new <- read.csv(url)
+npc <- predict(wisc.pr, newdata=new)
+npc
+```
+
+```{r}
+plot(wisc.pr$x[,1:2], col=grps)
+points(npc[,1], npc[,2], col="blue", pch=16, cex=3)
+text(npc[,1], npc[,2], c(1,2), col="white")
+```
+
+Q16. Which of these new patients should we prioritize for follow up based on your results?
+
+A16: I would say patient 1 is at a higher risk and needs to be prioritized because the point for patient 1 is closer to the malignant cluster, which means their cancer is more life threatening. Patient 2 is more near the begnign cluster, meaning it is not as urgent compared to patient 1.
